@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# local files
+.DS_Store
+~$*
+cicd-steps.md
+setup-prerequisites.sh
+task-definition.json
