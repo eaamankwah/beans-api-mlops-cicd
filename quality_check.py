@@ -38,26 +38,32 @@ def make_collate_fn(pipe, label_names):
             scores = {p["label"]: p["score"] for p in preds}
             proba.append([scores.get(lbl, 0.0) for lbl in label_names])
         images_np = [np.array(img) for img in images_pil]
-        return BatchOutputFormat(images=images_np, labels=labels, predictions=proba)
+        return BatchOutputFormat(
+            images=images_np, labels=labels, predictions=proba
+        )
+
     return collate_fn
 
 
 def build_vision_data(hf_split, pipe, label_names):
-    dataset = BeansDataset(load_dataset("beans", split=hf_split))
+    # FIXED: Changed from legacy "beans" to canonical "creativa/beans"
+    dataset = BeansDataset(load_dataset("creativa/beans", split=hf_split))
     label_map = {i: lbl for i, lbl in enumerate(label_names)}
     loader = DataLoader(
         dataset,
         batch_size=8,
         collate_fn=make_collate_fn(pipe, label_names),
     )
-    return VisionData(batch_loader=loader, task_type="classification", label_map=label_map)
+    return VisionData(
+        batch_loader=loader, task_type="classification", label_map=label_map
+    )
 
 
 def main():
     print(f"Loading model: {MODEL_NAME}...")
     pipe = pipeline("image-classification", model=MODEL_NAME)
 
-    dataset = load_dataset("beans", split="validation")
+    dataset = load_dataset("creativa/beans", split="validation")
     label_names = dataset.features["labels"].names
 
     print("Building VisionData...")
@@ -74,9 +80,13 @@ def main():
         if isinstance(check_result, CheckFailure):
             continue
         if check_result.check.name() == "Label Drift":
-            drift_score = check_result.value["Samples Per Class"]["Drift score"]
+            drift_score = check_result.value["Samples Per Class"][
+                "Drift score"
+            ]
             if drift_score > 0.5:
-                print(f"  [FAIL] Label Drift: score {drift_score:.3f} exceeds threshold 0.5")
+                print(
+                    f"  [FAIL] Label Drift: score {drift_score:.3f} exceeds threshold 0.5"
+                )
                 sys.exit(1)
             else:
                 print(f"  [PASS] Label Drift: score {drift_score:.3f} ≤ 0.5")
